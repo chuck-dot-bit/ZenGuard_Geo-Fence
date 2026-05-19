@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How ZenGuard TSA Works — Total Site Accountability</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Barlow:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:#0C1A2E;--navy2:#162540;--navy3:#1E3258;
+    --gold:#C9A84C;--gold2:#E8C46A;--gold3:#F5D98A;
+    --white:#F4F0E8;--grey:#8A9BB0;--dgrey:#4A5A70;
+    --teal:#1D9E75;--teal2:#25C491;--red:#E24B4A;--amber:#EF9F27;--blue:#378ADD;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{background:var(--navy);color:var(--white);font-family:'Barlow',sans-serif;font-size:16px;line-height:1.65;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");opacity:.025;pointer-events:none;z-index:0;}
+  body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--gold) 0.5px,transparent 0.5px),linear-gradient(90deg,var(--gold) 0.5px,transparent 0.5px);background-size:60px 60px;opacity:.035;pointer-events:none;z-index:0;}
+
+  /* HEADER */
+  header{position:relative;z-index:10;background:var(--navy2);border-bottom:2px solid var(--gold);overflow:hidden;}
+  .header-inner{max-width:1100px;margin:0 auto;padding:48px 40px 44px;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:end;}
+  .header-eyebrow{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:var(--gold);margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+  .header-eyebrow::before{content:'';display:inline-block;width:24px;height:2px;background:var(--gold);}
+  h1{font-family:'Barlow Condensed',sans-serif;font-size:clamp(42px,6vw,72px);font-weight:800;line-height:.95;letter-spacing:-1px;text-transform:uppercase;color:var(--white);}
+  h1 span{color:var(--gold);}
+  .header-sub{font-size:16px;font-weight:300;color:var(--grey);margin-top:16px;max-width:420px;line-height:1.7;}
+  .header-right{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:16px;}
+  .shield-badge{width:80px;height:80px;background:var(--gold);clip-path:polygon(50% 0%,95% 20%,95% 65%,50% 100%,5% 65%,5% 20%);display:flex;align-items:center;justify-content:center;}
+  .shield-inner{width:56px;height:56px;background:var(--navy2);clip-path:polygon(50% 8%,90% 24%,90% 62%,50% 92%,10% 62%,10% 24%);display:flex;align-items:center;justify-content:center;}
+  .shield-text{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;letter-spacing:1px;color:var(--gold);text-align:center;line-height:1.2;}
+  .stat-row{display:flex;gap:24px;}
+  .stat-item{text-align:right;}
+  .stat-num{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:700;color:var(--gold);line-height:1;}
+  .stat-lbl{font-size:12px;color:var(--grey);letter-spacing:1px;text-transform:uppercase;}
+  .header-tagline{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--gold);border:1px solid rgba(201,168,76,.3);padding:8px 16px;display:inline-block;}
+
+  /* MAIN */
+  main{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:64px 40px 80px;}
+  .section-title{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:12px;}
+  .section-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(201,168,76,.4),transparent);}
+  .section-h2{font-family:'Barlow Condensed',sans-serif;font-size:clamp(28px,4vw,42px);font-weight:700;line-height:1.1;text-transform:uppercase;color:var(--white);margin-bottom:32px;}
+  .section-h2 span{color:var(--gold);}
+  .intro-text{font-size:17px;font-weight:300;color:var(--grey);max-width:680px;line-height:1.8;margin-bottom:56px;border-left:3px solid var(--gold);padding-left:20px;}
+  .intro-text strong{color:var(--white);font-weight:500;}
+
+  /* DIAGRAM */
+  .diagram-wrap{background:var(--navy2);border:1px solid rgba(201,168,76,.2);border-top:2px solid var(--gold);padding:40px;margin-bottom:72px;position:relative;overflow:hidden;}
+  .diagram-wrap::before{content:'TSA PLATFORM';position:absolute;top:16px;right:24px;font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:3px;color:rgba(201,168,76,.35);}
+  .diagram-wrap svg{width:100%;height:auto;display:block;}
+
+  /* POPUP OVERLAY */
+  .popup-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center;}
+  .popup-overlay.active{display:flex;}
+  .popup-box{background:var(--navy2);border:1px solid rgba(201,168,76,.3);border-top:3px solid var(--gold);padding:36px 40px;max-width:480px;width:90%;position:relative;animation:popIn .2s ease;}
+  @keyframes popIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+  .popup-close{position:absolute;top:14px;right:18px;background:none;border:none;color:var(--grey);font-size:22px;cursor:pointer;line-height:1;padding:4px 8px;}
+  .popup-close:hover{color:var(--white);}
+  .popup-icon{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:20px;}
+  .popup-title{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--white);margin-bottom:8px;}
+  .popup-body{font-size:14px;font-weight:300;color:var(--grey);line-height:1.75;margin-bottom:20px;}
+  .popup-body strong{color:var(--white);font-weight:500;}
+  .popup-cta{display:inline-block;background:var(--gold);color:var(--navy);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:11px 22px;transition:background .2s;}
+  .popup-cta:hover{background:var(--gold2);}
+  .popup-cta-sec{display:inline-block;color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;text-decoration:none;border:1px solid rgba(201,168,76,.3);padding:9px 20px;margin-left:10px;transition:border-color .2s;}
+  .popup-cta-sec:hover{border-color:var(--gold);}
+
+  /* clickable SVG nodes */
+  .svg-node{cursor:pointer;transition:opacity .15s;}
+  .svg-node:hover{opacity:.82;}
+
+  /* STEPS */
+  .steps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:2px;margin-bottom:72px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.15);}
+  .step-card{background:var(--navy2);padding:32px 28px;position:relative;transition:background .2s;}
+  .step-card:hover{background:var(--navy3);}
+  .step-num{font-family:'Barlow Condensed',sans-serif;font-size:56px;font-weight:800;color:rgba(201,168,76,.12);line-height:1;position:absolute;top:20px;right:20px;}
+  .step-icon{width:40px;height:40px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.3);display:flex;align-items:center;justify-content:center;margin-bottom:20px;}
+  .step-icon svg{width:20px;height:20px;stroke:var(--gold);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}
+  .step-title{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--white);margin-bottom:10px;}
+  .step-desc{font-size:14px;font-weight:300;color:var(--grey);line-height:1.65;}
+  .step-highlight{display:inline-block;margin-top:12px;font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);}
+
+  /* LOG GRID */
+  .log-section{margin-bottom:72px;}
+  .log-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.12);}
+  .log-category{background:var(--navy2);padding:28px;}
+  .log-cat-title{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid rgba(201,168,76,.15);display:flex;align-items:center;gap:10px;}
+  .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .log-item{display:flex;align-items:flex-start;gap:10px;padding:6px 0;font-size:14px;font-weight:300;color:var(--grey);border-bottom:1px solid rgba(255,255,255,.04);}
+  .log-item:last-child{border-bottom:none;}
+  .log-item::before{content:'→';color:var(--gold);font-size:12px;margin-top:2px;flex-shrink:0;}
+  .log-item strong{color:var(--white);font-weight:500;}
+
+  /* TIMELINE */
+  .timeline-section{margin-bottom:72px;}
+  .timeline{display:flex;align-items:stretch;gap:0;background:var(--navy2);border:1px solid rgba(201,168,76,.15);border-top:2px solid var(--gold);overflow-x:auto;padding:32px 28px;}
+  .timeline-item{display:flex;flex-direction:column;align-items:center;flex:1;min-width:100px;position:relative;}
+  .timeline-item:not(:last-child)::after{content:'';position:absolute;top:19px;left:60%;width:80%;height:2px;background:rgba(201,168,76,.25);}
+  .tl-dot{width:38px;height:38px;border-radius:50%;border:2px solid var(--gold);background:var(--navy);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:var(--gold);margin-bottom:12px;position:relative;z-index:1;flex-shrink:0;}
+  .tl-dot.alert{border-color:var(--red);color:var(--red);}
+  .tl-dot.complete{background:var(--teal);border-color:var(--teal);color:white;}
+  .tl-time{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:600;color:var(--gold);letter-spacing:1px;margin-bottom:4px;}
+  .tl-label{font-size:12px;color:var(--grey);text-align:center;line-height:1.4;}
+  .tl-badge{margin-top:6px;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:2px;}
+  .badge-ok{background:rgba(29,158,117,.2);color:var(--teal2);}
+  .badge-alert{background:rgba(226,75,74,.2);color:var(--red);}
+  .badge-warn{background:rgba(239,159,39,.2);color:var(--amber);}
+
+  /* CTA */
+  .cta-section{background:var(--navy2);border:1px solid rgba(201,168,76,.2);border-left:4px solid var(--gold);padding:48px;display:grid;grid-template-columns:1fr auto;gap:40px;align-items:center;}
+  .cta-h3{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--white);margin-bottom:8px;}
+  .cta-sub{font-size:15px;font-weight:300;color:var(--grey);}
+  .cta-sub strong{color:var(--gold);font-weight:500;}
+  .cta-buttons{display:flex;flex-direction:column;gap:12px;align-items:flex-end;}
+  .btn-primary{display:inline-block;background:var(--gold);color:var(--navy);font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:14px 28px;transition:background .2s,transform .1s;white-space:nowrap;border:none;cursor:pointer;}
+  .btn-primary:hover{background:var(--gold2);transform:translateY(-1px);}
+  .btn-secondary{display:inline-block;color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;text-decoration:none;border:1px solid rgba(201,168,76,.3);padding:10px 24px;transition:border-color .2s,background .2s;white-space:nowrap;background:none;cursor:pointer;}
+  .btn-secondary:hover{border-color:var(--gold);background:rgba(201,168,76,.06);}
+
+  /* LIVE DOT */
+  .live-dot{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal2);margin-bottom:20px;}
+  @keyframes pulse-ring{0%{box-shadow:0 0 0 0 var(--teal2)}100%{box-shadow:0 0 0 8px rgba(37,196,145,0)}}
+  .live-dot::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--teal2);animation:pulse-ring 1.5s ease-out infinite;flex-shrink:0;}
+
+  /* FOOTER */
+  footer{position:relative;z-index:1;background:var(--navy);border-top:1px solid rgba(201,168,76,.15);padding:28px 40px;}
+  .footer-inner{max-width:1100px;margin:0 auto;width:100%;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;}
+  .footer-brand{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);}
+  .footer-contact{font-size:13px;color:var(--dgrey);line-height:1.6;text-align:right;}
+  .footer-contact a{color:var(--grey);text-decoration:none;}
+
+  @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+  .animate-in{animation:fadeUp .6s ease both;}
+  .delay-1{animation-delay:.1s;}.delay-2{animation-delay:.2s;}.delay-3{animation-delay:.3s;}
+
+  @media(max-width:680px){
+    .header-inner{grid-template-columns:1fr;gap:24px;}
+    .header-right{align-items:flex-start;flex-direction:row;flex-wrap:wrap;}
+    .log-grid{grid-template-columns:1fr;}
+    .cta-section{grid-template-columns:1fr;}
+    .cta-buttons{align-items:flex-start;}
+    main{padding:40px 20px 60px;}
+    .diagram-wrap{padding:20px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- POPUP OVERLAY -->
+<div class="popup-overlay" id="popup" onclick="closePopup(event)">
+  <div class="popup-box">
+    <button class="popup-close" onclick="document.getElementById('popup').classList.remove('active')">✕</button>
+    <div class="popup-icon" id="popup-icon"></div>
+    <div class="popup-title" id="popup-title"></div>
+    <div class="popup-body" id="popup-body"></div>
+    <a href="#" class="popup-cta" id="popup-cta-btn">Book a Demo</a>
+    <a href="#" class="popup-cta-sec" id="popup-cta2-btn">Have Steve Call Me</a>
+  </div>
+</div>
+
+<header>
+  <div class="header-inner">
+    <div class="animate-in">
+      <div class="header-eyebrow">ZenGuard Security Solutions</div>
+      <h1>Total Site<br><span>Accountability</span></h1>
+      <p class="header-sub">Real-time guard tracking, geofenced patrol enforcement, and instant reporting — all on one live dashboard you can check from anywhere.</p>
+    </div>
+    <div class="header-right animate-in delay-2">
+      <div class="shield-badge"><div class="shield-inner"><div class="shield-text">ZEN<br>GUARD</div></div></div>
+      <div class="stat-row">
+        <div class="stat-item"><div class="stat-num">100%</div><div class="stat-lbl">Results</div></div>
+        <div class="stat-item"><div class="stat-num">0%</div><div class="stat-lbl">Turnover</div></div>
+        <div class="stat-item"><div class="stat-num">24/7</div><div class="stat-lbl">Command</div></div>
+      </div>
+      <div class="header-tagline">BC's Most Accountable Security</div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <div class="section-title">The accountability gap</div>
+  <p class="intro-text animate-in">
+    Most security incidents happen because of <strong>a gap nobody could see in real time.</strong>
+    A guard off-route. A checkpoint missed. A stationary truck at 2am that nobody noticed.
+    ZenGuard's TSA platform closes that gap — permanently.
+  </p>
+
+  <div class="section-title">How geofencing + patrol enforcement works</div>
+  <div class="diagram-wrap animate-in delay-1">
+    <svg viewBox="0 0 900 430" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+        <pattern id="propgrid" width="20" height="20" patternUnits="userSpaceOnUse">
+          <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#C9A84C" stroke-width="0.3" opacity="0.15"/>
+        </pattern>
+      </defs>
+
+      <!-- PROPERTY -->
+      <rect x="30" y="30" width="360" height="360" rx="12" fill="#162540"/>
+      <rect x="30" y="30" width="360" height="360" rx="12" fill="url(#propgrid)"/>
+      <rect x="30" y="30" width="360" height="360" rx="12" fill="none" stroke="#378ADD" stroke-width="2" stroke-dasharray="12 6" opacity="0.6"/>
+      <text x="210" y="20" text-anchor="middle" font-family="Barlow Condensed" font-size="13" font-weight="600" fill="#378ADD" letter-spacing="2">GEOFENCED PROPERTY BOUNDARY</text>
+
+      <!-- Buildings -->
+      <rect x="60" y="280" width="140" height="90" rx="4" fill="#1E3258" stroke="#4A5A70" stroke-width="0.5"/>
+      <text x="130" y="323" text-anchor="middle" font-family="Barlow Condensed" font-size="13" font-weight="700" fill="#8A9BB0">HEAD OFFICE</text>
+      <rect x="250" y="60" width="110" height="70" rx="4" fill="#1E3258" stroke="#4A5A70" stroke-width="0.5"/>
+      <text x="305" y="91" text-anchor="middle" font-family="Barlow Condensed" font-size="13" fill="#8A9BB0">SITE OFFICE</text>
+      <text x="305" y="107" text-anchor="middle" font-family="Barlow Condensed" font-size="11" fill="#4A5A70">NVR / Monitor</text>
+
+      <!-- Patrol route -->
+      <path d="M 100 260 L 100 140 L 180 80 L 260 140 L 280 260 L 180 290 Z" fill="none" stroke="#378ADD" stroke-width="1.2" stroke-dasharray="8 5" opacity="0.35"/>
+
+      <!-- CHECKPOINTS — clickable -->
+      <g class="svg-node" onclick="showPopup('cp1')">
+        <circle cx="100" cy="260" r="18" fill="#0F6E56" stroke="#1D9E75" stroke-width="1.5"/>
+        <text x="100" y="264" text-anchor="middle" font-family="Barlow Condensed" font-size="13" font-weight="700" fill="#F4F0E8">CP1</text>
+        <text x="66" y="288" font-family="Barlow Condensed" font-size="12" fill="#1D9E75">06:12 AM ✓</text>
+      </g>
+      <g class="svg-node" onclick="showPopup('cp2')">
+        <circle cx="100" cy="140" r="18" fill="#0F6E56" stroke="#1D9E75" stroke-width="1.5"/>
+        <text x="100" y="144" text-anchor="middle" font-family="Barlow Condensed" font-size="13" font-weight="700" fill="#F4F0E8">CP2</text>
+        <text x="66" y="166" font-family="Barlow Condensed" font-size="12" fill="#1D9E75">06:19 AM ✓</text>
+      </g>
+      <g class="svg-node" onclick="showPopup('cp3')">
+        <circle cx="180" cy="80" r="18" fill="#0F6E56" stroke="#1D9E75" stroke-width="1.5"/>
+        <text x="180" y="84" text-anchor="middle" font-family="Barlow Condensed" font-size="13" font-weight="700" fill="#F4F0E8">CP3</text>
+        <text x="148" y="60" font-family="Barlow Condensed" font-size="12" fill="#1D9E75">06:27 AM ✓</text>
+      </g>
+      <g class="svg-node" onclick="showPopup('cp4')">
+        <circle cx="260" cy="140" r="18" fill="#0F6E56" stroke="#1D9E75" stroke-width="1.5"/>
+        <text x="260" y="144" text-anchor="middle" font-family="Barlow Condensed" font-size="13" font-weight="700" fill="#F4F0E8">CP4</text>
+        <text x="280" y="140" font-family="Barlow Condensed" font-size="12" fill="#1D9E75">06:35 AM ✓</text>
+      </g>
+      <g class="svg-node" onclick="showPopup('cp5')">
+        <circle cx="280" cy="260" r="18" fill="#412402" stroke="#EF9F27" stroke-width="1.5" stroke-dasharray="4 2"/>
+        <text x="280" y="264" text-anchor="middle" font-family="Barlow Condensed" font-size="13" font-weight="700" fill="#EF9F27">CP5</text>
+        <text x="300" y="256" font-family="Barlow Condensed" font-size="12" fill="#EF9F27">OVERDUE</text>
+      </g>
+
+      <!-- GUARD — clickable -->
+      <g class="svg-node" onclick="showPopup('guard')">
+        <circle cx="180" cy="210" r="16" fill="#1D9E75"/>
+        <text x="180" y="214" text-anchor="middle" font-family="Barlow Condensed" font-size="14" font-weight="800" fill="white">G</text>
+        <circle cx="180" cy="210" r="26" fill="none" stroke="#1D9E75" stroke-width="0.8" opacity="0.4"/>
+        <circle cx="180" cy="210" r="36" fill="none" stroke="#1D9E75" stroke-width="0.5" opacity="0.2"/>
+        <text x="180" y="254" text-anchor="middle" font-family="Barlow Condensed" font-size="12" fill="#25C491">LIVE GPS</text>
+      </g>
+
+      <!-- IDLE ALERT — clickable -->
+      <g class="svg-node" onclick="showPopup('idle')">
+        <rect x="32" y="352" width="356" height="26" rx="4" fill="#412402" stroke="#EF9F27" stroke-width="0.8"/>
+        <text x="210" y="365" text-anchor="middle" font-family="Barlow Condensed" font-size="13" font-weight="600" fill="#EF9F27">IDLE ALERT — Guard stationary 14 min — Management notified instantly</text>
+      </g>
+
+      <!-- ZONE BREACH — clickable -->
+      <g class="svg-node" onclick="showPopup('breach')">
+        <circle cx="368" cy="200" r="14" fill="#8B1A1A" stroke="#E24B4A" stroke-width="1.5"/>
+        <text x="368" y="204" text-anchor="middle" font-family="Barlow Condensed" font-size="13" font-weight="700" fill="#E24B4A">!</text>
+        <text x="384" y="196" font-family="Barlow Condensed" font-size="13" fill="#E24B4A">ZONE</text>
+        <text x="384" y="210" font-family="Barlow Condensed" font-size="13" fill="#E24B4A">BREACH</text>
+      </g>
+
+      <!-- Connector arrow -->
+      <line x1="398" y1="210" x2="445" y2="210" stroke="#C9A84C" stroke-width="1.2" marker-end="url(#arr)" stroke-dasharray="6 4"/>
+      <text x="418" y="203" text-anchor="middle" font-family="Barlow Condensed" font-size="12" fill="#C9A84C">LIVE</text>
+
+      <!-- REPORTING CHAIN — all clickable -->
+      <g class="svg-node" onclick="showPopup('eventlog')">
+        <rect x="448" y="40" width="192" height="66" rx="6" fill="#1E3258" stroke="#378ADD" stroke-width="0.8"/>
+        <text x="544" y="64" text-anchor="middle" font-family="Barlow Condensed" font-size="15" font-weight="700" fill="#F4F0E8">Event Log</text>
+        <text x="544" y="82" text-anchor="middle" font-family="Barlow Condensed" font-size="12" fill="#8A9BB0">GPS position every 30 sec</text>
+        <text x="544" y="97" text-anchor="middle" font-family="Barlow Condensed" font-size="12" fill="#8A9BB0">Checkpoint scan + photo</text>
+      </g>
+      <line x1="544" y1="106" x2="544" y2="130" stroke="#8A9BB0" stroke-width="0.8" marker-end="url(#arr)"/>
+
+      <g class="svg-node" onclick="showPopup('dar')">
+        <rect x="448" y="132" width="192" height="56" rx="6" fill="#0F3329" stroke="#1D9E75" stroke-width="0.8"/>
+        <text x="544" y="155" text-anchor="middle" font-family="Barlow Condensed" font-size="15" font-weight="700" fill="#F4F0E8">Digital DAR</text>
+        <text x="544" y="174" text-anchor="middle" font-family="Barlow Condensed" font-size="12" fill="#8A9BB0">Auto-generated · end of shift</text>
+      </g>
+      <line x1="544" y1="188" x2="544" y2="212" stroke="#8A9BB0" stroke-width="0.8" marker-end="url(#arr)"/>
+
+      <g class="svg-node" onclick="showPopup('incident')">
+        <rect x="448" y="214" width="192" height="56" rx="6" fill="#1E0C0C" stroke="#E24B4A" stroke-width="0.8"/>
+        <text x="544" y="237" text-anchor="middle" font-family="Barlow Condensed" font-size="15" font-weight="700" fill="#F4F0E8">Incident Report</text>
+        <text x="544" y="256" text-anchor="middle" font-family="Barlow Condensed" font-size="12" fill="#8A9BB0">Photo · GPS · Timestamp</text>
+      </g>
+      <line x1="544" y1="270" x2="544" y2="294" stroke="#8A9BB0" stroke-width="0.8" marker-end="url(#arr)"/>
+
+      <g class="svg-node" onclick="showPopup('dashboard')">
+        <rect x="448" y="296" width="192" height="56" rx="6" fill="#1E3258" stroke="#C9A84C" stroke-width="1"/>
+        <text x="544" y="319" text-anchor="middle" font-family="Barlow Condensed" font-size="15" font-weight="700" fill="#C9A84C">Your Dashboard</text>
+        <text x="544" y="338" text-anchor="middle" font-family="Barlow Condensed" font-size="12" fill="#8A9BB0">Live · Any device · Any time</text>
+      </g>
+      <line x1="544" y1="352" x2="544" y2="374" stroke="#8A9BB0" stroke-width="0.8" marker-end="url(#arr)"/>
+
+      <g class="svg-node" onclick="showPopup('phone')">
+        <rect x="448" y="376" width="192" height="32" rx="6" fill="#162540" stroke="#C9A84C" stroke-width="0.6"/>
+        <text x="544" y="392" text-anchor="middle" font-family="Barlow Condensed" font-size="13" fill="#C9A84C">Push alert → your phone</text>
+      </g>
+
+      <!-- Idle to incident arrow -->
+      <path d="M 388 365 L 430 365 L 430 242 L 446 242" fill="none" stroke="#EF9F27" stroke-width="0.8" marker-end="url(#arr)" stroke-dasharray="5 3"/>
+
+      <!-- Legend -->
+      <circle cx="452" cy="416" r="7" fill="#1D9E75"/>
+      <text x="464" y="420" font-family="Barlow Condensed" font-size="12" fill="#8A9BB0">Checkpoint scanned</text>
+      <circle cx="572" cy="416" r="7" fill="#412402" stroke="#EF9F27" stroke-width="1"/>
+      <text x="584" y="420" font-family="Barlow Condensed" font-size="12" fill="#8A9BB0">Overdue</text>
+      <circle cx="646" cy="416" r="7" fill="#1D9E75"/>
+      <text x="658" y="420" font-family="Barlow Condensed" font-size="12" fill="#8A9BB0">Guard live GPS</text>
+
+      <text x="544" y="430" text-anchor="middle" font-family="Barlow Condensed" font-size="11" fill="#4A5A70" letter-spacing="2">CLICK ANY ELEMENT TO LEARN MORE</text>
+    </svg>
+  </div>
+
+  <!-- STEPS -->
+  <div class="section-title">Step by step</div>
+  <h2 class="section-h2">How <span>TSA</span> works</h2>
+  <div class="steps-grid animate-in">
+    <div class="step-card">
+      <div class="step-num">01</div>
+      <div class="step-icon"><svg viewBox="0 0 24 24"><polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5"/></svg></div>
+      <div class="step-title">Geofence set</div>
+      <div class="step-desc">Your property boundary is mapped and programmed into the TSA platform. The guard's authorized zone is defined down to the metre.</div>
+      <div class="step-highlight">One-time site setup</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">02</div>
+      <div class="step-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8" stroke-dasharray="3 2"/></svg></div>
+      <div class="step-title">Live GPS tracking</div>
+      <div class="step-desc">Guard position is broadcast every 30 seconds. You see a live breadcrumb trail of every movement — and every pause — across the entire shift.</div>
+      <div class="step-highlight">30-sec update interval</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">03</div>
+      <div class="step-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg></div>
+      <div class="step-title">Checkpoint scans</div>
+      <div class="step-desc">Digital scanning stations at each checkpoint — scanned by the guard, logged with GPS coordinates, timestamp, and optional photo. No paper.</div>
+      <div class="step-highlight">Every round, verified</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">04</div>
+      <div class="step-icon"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+      <div class="step-title">Idle alert fires</div>
+      <div class="step-desc">If a guard is stationary beyond the timed patrol window, management receives an immediate push notification. No exceptions, no delays.</div>
+      <div class="step-highlight">Instant escalation</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">05</div>
+      <div class="step-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+      <div class="step-title">Digital DAR</div>
+      <div class="step-desc">At end of shift, a full Digital Activity Report is auto-generated — every checkpoint, every incident, every patrol time — delivered before the next shift starts.</div>
+      <div class="step-highlight">No paper, no delays</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">06</div>
+      <div class="step-icon"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18" stroke-linecap="round" stroke-width="2"/></svg></div>
+      <div class="step-title">Your dashboard</div>
+      <div class="step-desc">Everything lands in your live dashboard — accessible from any device, anywhere, any time. One view of your entire security operation, in real time.</div>
+      <div class="step-highlight">4G/5G cellular + WiFi</div>
+    </div>
+  </div>
+
+  <!-- LOG GRID -->
+  <div class="log-section">
+    <div class="section-title">Automatic logging</div>
+    <h2 class="section-h2">Every shift, <span>automatically logged</span></h2>
+    <div class="log-grid">
+      <div class="log-category">
+        <div class="log-cat-title"><div class="dot" style="background:var(--teal)"></div><span style="color:var(--teal2)">Location & movement</span></div>
+        <div class="log-item">GPS position every 30 seconds — full shift breadcrumb trail</div>
+        <div class="log-item">Patrol route completion — every checkpoint timestamped</div>
+        <div class="log-item">Zone breach events — exact time, location, and duration</div>
+        <div class="log-item">Missed checkpoint flags — gap logged automatically</div>
+      </div>
+      <div class="log-category">
+        <div class="log-cat-title"><div class="dot" style="background:var(--amber)"></div><span style="color:var(--amber)">Patrol enforcement</span></div>
+        <div class="log-item">Checkpoint scans — time, guard ID, GPS, optional photo</div>
+        <div class="log-item"><strong>Idle alerts</strong> — triggered and logged when stationary too long</div>
+        <div class="log-item">Patrol interval timing — actual vs scheduled</div>
+        <div class="log-item">Shift clock-in/out — GPS-verified on-site</div>
+      </div>
+      <div class="log-category">
+        <div class="log-cat-title"><div class="dot" style="background:var(--red)"></div><span style="color:#f09595">Incidents & alerts</span></div>
+        <div class="log-item"><strong>Incident reports</strong> — photo, GPS coordinates, timestamp, notes</div>
+        <div class="log-item">Panic button activations — instant 24/7 command centre escalation</div>
+        <div class="log-item">Visitor and vehicle check-ins — logged at point of entry</div>
+        <div class="log-item">Tamper or camera alerts — if camera system is installed</div>
+      </div>
+      <div class="log-category">
+        <div class="log-cat-title"><div class="dot" style="background:var(--gold)"></div><span style="color:var(--gold2)">Reporting & handoff</span></div>
+        <div class="log-item">Digital DAR — auto-generated full shift summary</div>
+        <div class="log-item">Passdown log — shift-to-shift guard notes, time-stamped</div>
+        <div class="log-item">Push notifications sent — log of every alert to management</div>
+        <div class="log-item">All data exportable — insurance-ready and legal-ready</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIMELINE -->
+  <div class="timeline-section">
+    <div class="section-title">Sample patrol shift</div>
+    <h2 class="section-h2">What a shift <span>actually looks like</span></h2>
+    <div class="timeline">
+      <div class="timeline-item"><div class="tl-dot complete">IN</div><div class="tl-time">06:00</div><div class="tl-label">Shift start<br>GPS verified</div><div class="tl-badge badge-ok">On site</div></div>
+      <div class="timeline-item"><div class="tl-dot complete">1</div><div class="tl-time">06:12</div><div class="tl-label">CP1 scanned<br>SW gate</div><div class="tl-badge badge-ok">Verified</div></div>
+      <div class="timeline-item"><div class="tl-dot complete">2</div><div class="tl-time">06:19</div><div class="tl-label">CP2 scanned<br>NW corner</div><div class="tl-badge badge-ok">Verified</div></div>
+      <div class="timeline-item"><div class="tl-dot complete">3</div><div class="tl-time">06:27</div><div class="tl-label">CP3 scanned<br>North fence</div><div class="tl-badge badge-ok">Verified</div></div>
+      <div class="timeline-item"><div class="tl-dot alert">!</div><div class="tl-time">06:41</div><div class="tl-label">Idle alert<br>14 min stationary</div><div class="tl-badge badge-alert">Alert sent</div></div>
+      <div class="timeline-item"><div class="tl-dot complete">4</div><div class="tl-time">06:53</div><div class="tl-label">CP4 scanned<br>SE corner</div><div class="tl-badge badge-warn">7 min late</div></div>
+      <div class="timeline-item"><div class="tl-dot complete">5</div><div class="tl-time">07:04</div><div class="tl-label">CP5 scanned<br>Main gate</div><div class="tl-badge badge-ok">Verified</div></div>
+      <div class="timeline-item"><div class="tl-dot">DAR</div><div class="tl-time">07:05</div><div class="tl-label">Digital DAR<br>auto-generated</div><div class="tl-badge badge-ok">Delivered</div></div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-section animate-in">
+    <div>
+      <div class="live-dot">ZenGuard is live in BC</div>
+      <h3 class="cta-h3">See what this looks like on your site</h3>
+      <p class="cta-sub">We'll pull up the live TSA dashboard and walk you through exactly what your team would see. <strong>15 minutes. No pitch deck.</strong></p>
+    </div>
+    <div class="cta-buttons">
+      <a href="mailto:steve@zenguardsecurity.com?subject=TSA%20Demo%20Request%20via%20ZenGuard%20page&body=Hi%20Steve%2C%0A%0AI'd%20like%20to%20book%20a%2015-minute%20demo%20of%20the%20ZenGuard%20TSA%20platform.%0A%0AMy%20name%3A%0AMy%20company%3A%0ABest%20time%20to%20reach%20me%3A" class="btn-primary">Book a 15-min Demo</a>
+      <a href="mailto:steve@zenguardsecurity.com?subject=Please%20Have%20Steve%20Call%20Me&body=Hi%20Steve%2C%0A%0APlease%20give%20me%20a%20call%20when%20you%20get%20a%20chance.%0A%0AMy%20name%3A%0AMy%20number%3A%0ABest%20time%20to%20call%3A" class="btn-secondary">Have Steve Call Me</a>
+      <a href="https://basic-template-builder.replit.app/" target="_blank" class="btn-secondary">Calculate Your ROI</a>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">ZenGuard Security Solutions</div>
+    <div class="footer-contact">
+      Steve Samchuck, VP Sales &nbsp;|&nbsp;
+      <a href="mailto:steve@zenguardsecurity.com">steve@zenguardsecurity.com</a> &nbsp;|&nbsp;
+      <a href="tel:6047205659">(604) 720-5659</a> &nbsp;|&nbsp; 24/7: (236) 833-8349<br>
+      7337 137 ST, Suite 202G, Surrey, BC V3W 1A4 &nbsp;|&nbsp;
+      <a href="https://www.zenguardsecurity.com" target="_blank">zenguardsecurity.com</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const popups = {
+  cp1:  { icon:'🟢', color:'#1D9E75', title:'Checkpoint 1 — Scanned & Verified', body:'Every checkpoint has a physical digital scanning station. When the guard scans CP1, the system logs their <strong>GPS coordinates, timestamp, guard ID, and an optional photo</strong> — all instantly accessible on your dashboard. No paper, no guessing.' },
+  cp2:  { icon:'🟢', color:'#1D9E75', title:'Checkpoint 2 — Scanned & Verified', body:'CP2 is logged at 06:19 AM — 7 minutes after CP1. The system tracks interval timing between checkpoints, so you can see not just <strong>that</strong> the guard made the rounds, but <strong>how long each leg took</strong>.' },
+  cp3:  { icon:'🟢', color:'#1D9E75', title:'Checkpoint 3 — Scanned & Verified', body:'North fence checkpoint confirmed at 06:27 AM. Each scan is GPS-pinned so you can verify the guard was physically at the location — not scanning from the truck.' },
+  cp4:  { icon:'🟢', color:'#1D9E75', title:'Checkpoint 4 — Scanned & Verified', body:'SE corner confirmed. On this shift, CP4 was scanned 7 minutes late following an idle alert. The system logged both the alert and the eventual scan — giving you a <strong>complete, honest picture</strong> of the shift.' },
+  cp5:  { icon:'🟡', color:'#EF9F27', title:'Checkpoint 5 — Overdue', body:'CP5 has not been scanned within its scheduled window. The system flags this automatically and can push a notification to management. <strong>You know before the shift ends</strong> — not the next morning.' },
+  guard:{ icon:'📍', color:'#1D9E75', title:'Guard — Live GPS Position', body:'Your guard\'s location is updated <strong>every 30 seconds</strong> and shown on a live map on your dashboard. You can see the full breadcrumb trail of the entire shift — every movement, every pause, every route deviation.' },
+  idle: { icon:'⚠️', color:'#EF9F27', title:'Idle Alert — Guard Stationary 14 Minutes', body:'The TSA platform detected the guard stationary beyond the allowed patrol window. <strong>Management was notified instantly via push alert</strong> — before the situation could become a problem. This is the gap most security companies can\'t see.' },
+  breach:{ icon:'🚨', color:'#E24B4A', title:'Zone Breach Alert', body:'If a guard leaves the geofenced property boundary, <strong>you are notified immediately</strong> with the exact time, location, and duration of the breach. No more wondering where your guard went during a shift.' },
+  eventlog:{ icon:'📋', color:'#378ADD', title:'Event Log — Automatic, Every Shift', body:'Every GPS position, checkpoint scan, idle alert, and incident is logged automatically — <strong>no manual entry required</strong>. The event log is your complete, timestamped record of every minute of every shift, accessible from any device.' },
+  dar:  { icon:'📄', color:'#1D9E75', title:'Digital DAR — Auto-Generated', body:'At the end of every shift, ZenGuard automatically generates a <strong>Digital Activity Report</strong> — a full summary of checkpoints completed, incidents logged, patrol times, and photos. It lands in your inbox before the next shift starts. No paper. No delays. No surprises.' },
+  incident:{ icon:'📷', color:'#E24B4A', title:'Incident Report — Photo + GPS + Timestamp', body:'When a guard files an incident report, it includes <strong>photos, GPS coordinates, a timestamp, and written notes</strong> — all logged instantly to your dashboard. Every report is exportable for insurance claims or legal use at any time.' },
+  dashboard:{ icon:'📊', color:'#C9A84C', title:'Your Live Dashboard', body:'Everything in one place — live guard location, checkpoint completion, incident reports, and shift status — accessible from <strong>any device, anywhere, any time</strong>. Works on 4G/5G cellular and WiFi. This is what you\'ll see when we do your demo.' },
+  phone:{ icon:'📱', color:'#C9A84C', title:'Push Alert — Your Phone', body:'Idle alerts, zone breaches, missed checkpoints, and incidents all push to your phone <strong>in real time</strong>. You\'re never waiting for an end-of-shift call to find out what happened on your site last night.' },
+};
+
+function showPopup(key) {
+  const p = popups[key];
+  if (!p) return;
+  document.getElementById('popup-icon').textContent = p.icon;
+  document.getElementById('popup-icon').style.background = p.color + '22';
+  document.getElementById('popup-title').textContent = p.title;
+  document.getElementById('popup-body').innerHTML = p.body;
+  const demoHref = "mailto:steve@zenguardsecurity.com?subject=TSA%20Demo%20Request&body=Hi%20Steve%2C%0A%0AI'd%20like%20to%20book%20a%20demo%20of%20the%20ZenGuard%20TSA%20platform.%0A%0AMy%20name%3A%0AMy%20company%3A%0ABest%20time%3A";
+  const callHref = "mailto:steve@zenguardsecurity.com?subject=Please%20Call%20Me&body=Hi%20Steve%2C%0A%0APlease%20give%20me%20a%20call.%0A%0AMy%20name%3A%0AMy%20number%3A%0ABest%20time%3A";
+  document.getElementById('popup-cta-btn').href = demoHref;
+  document.getElementById('popup-cta2-btn').href = callHref;
+  document.getElementById('popup').classList.add('active');
+}
+
+function closePopup(e) {
+  if (e.target === document.getElementById('popup')) {
+    document.getElementById('popup').classList.remove('active');
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('popup').classList.remove('active');
+});
+</script>
+</body>
+</html>
